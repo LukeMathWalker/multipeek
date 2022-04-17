@@ -13,7 +13,7 @@
       alt="Download" />
   </a>
   <!-- docs.rs docs -->
-  <a href="https://docs.rs/wiremock">
+  <a href="https://docs.rs/multipeek">
     <img src="https://img.shields.io/badge/docs-latest-blue.svg?style=flat-square"
       alt="docs.rs docs" />
   </a>
@@ -23,7 +23,7 @@
 An iterator adapter to peek at future elements without advancing the cursor of the underlying
 iterator.
 
-Check out [multipeek()] for more details.
+Check out the [documentation](https://docs.rs/multipeek) for more details.
 
 # Example
 
