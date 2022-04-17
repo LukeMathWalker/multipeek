@@ -1,0 +1,10 @@
+[package]
+name = "multipeek"
+version = "0.1.0"
+edition = "2021"
+description = "An adapter to peek at future elements in an iterator without advancing the iterator cursor"
+repository = "https://github.com/LukeMathWalker/multipeek"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+keywords = ["iterator", "multipeek", "peek"]
+categories = ["data-structures", "no-std"]
