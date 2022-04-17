@@ -60,7 +60,7 @@ extern crate alloc;
 extern crate core as std;
 
 use alloc::collections::VecDeque;
-use std::iter::Fuse;
+use std::iter::{Fuse, FusedIterator};
 
 /// A wrapper type around the underlying iterator.
 ///
@@ -294,3 +294,6 @@ impl<T> IteratorExt for T where T: Iterator {}
 
 // Same size
 impl<I> ExactSizeIterator for MultiPeek<I> where I: ExactSizeIterator {}
+
+// The underlying iterator we are wrapping in [`MultiPeek`] is fused in [`multipeek`].
+impl<I> FusedIterator for MultiPeek<I> where I: Iterator {}
