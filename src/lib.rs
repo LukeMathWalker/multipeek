@@ -72,7 +72,6 @@ where
 {
     iter: Fuse<I>,
     buf: VecDeque<I::Item>,
-    index: usize,
 }
 
 /// An iterator adapter to peek at future elements without advancing the cursor of the underlying
@@ -115,7 +114,6 @@ where
     MultiPeek {
         iter: iterable.into_iter().fuse(),
         buf: VecDeque::new(),
-        index: 0,
     }
 }
 
@@ -257,7 +255,6 @@ where
     type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.index = 0;
         self.buf.pop_front().or_else(|| self.iter.next())
     }
 
