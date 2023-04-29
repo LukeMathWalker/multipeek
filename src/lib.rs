@@ -1,3 +1,4 @@
+// TODO: add peek_mut and peek_nth_mut
 #![no_std]
 #![deny(clippy::cargo_common_metadata)]
 //! An iterator adapter to peek at future elements without advancing the cursor of the underlying
@@ -245,6 +246,48 @@ impl<I: Iterator> MultiPeek<I> {
             self.buf.push_back(item);
         }
         Some(&self.buf[n])
+    }
+
+    /// Returns a mutable reference to the next() value without advancing the iterator cursor.
+    /// 
+    /// If the iteration is over, None is returned.
+    ///
+    /// # Example
+    /// Edit values in an array
+    /// ```rust
+    /// use multipeek::IteratorExt as _;
+    ///
+    /// let mut iter = [1, 2, 3, 4, 5].into_iter().multipeek();
+    /// *iter.peek_mut().unwrap() += 2;
+    /// let nums: Vec<_> = iter.collect();
+    /// assert_eq!(nums, vec![3, 2, 3, 4, 5]);
+    /// ```
+    pub fn peek_mut(&mut self) -> Option<&mut I::Item> {
+        self.peek_nth_mut(0)
+    }
+
+    /// Returns a mutable reference to the nth(`n`) value without advancing the iterator cursor.
+    ///
+    /// If the value of n is beyond the iterator's remaining length, this returns None.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use multipeek::IteratorExt as _;
+    ///
+    /// let mut iter = (1..5).multipeek();
+    /// *iter.peek_nth_mut(3).unwrap() -= 2;
+    /// *iter.peek_nth_mut(2).unwrap() += 3;
+    /// // The iterator only contains 4 elements, so peek_nth_mut(4) returns None
+    /// assert_eq!(iter.peek_nth_mut(4), None);
+    /// let nums: Vec<_> = iter.collect();
+    /// assert_eq!(nums, vec![1, 2, 6, 2]);
+    /// ```
+    pub fn peek_nth_mut(&mut self, n: usize) -> Option<&mut I::Item> {
+        while n >= self.buf.len() {
+            let item = self.iter.next()?;
+            self.buf.push_back(item);
+        }
+        Some(&mut self.buf[n])
     }
 
     /// Consume and return the next value of this iterator if a condition is true.
