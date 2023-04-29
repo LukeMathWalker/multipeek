@@ -1,4 +1,3 @@
-// TODO: add peek_mut and peek_nth_mut
 #![no_std]
 #![deny(clippy::cargo_common_metadata)]
 //! An iterator adapter to peek at future elements without advancing the cursor of the underlying
