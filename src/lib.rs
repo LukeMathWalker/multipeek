@@ -246,6 +246,181 @@ impl<I: Iterator> MultiPeek<I> {
         }
         Some(&self.buf[n])
     }
+
+    /// Returns a mutable reference to the next() value without advancing the iterator cursor.
+    /// 
+    /// If the iteration is over, None is returned.
+    ///
+    /// # Example
+    /// Edit values in an array
+    /// ```rust
+    /// use multipeek::IteratorExt as _;
+    ///
+    /// let mut iter = [1, 2, 3, 4, 5].into_iter().multipeek();
+    /// *iter.peek_mut().unwrap() += 2;
+    /// let nums: Vec<_> = iter.collect();
+    /// assert_eq!(nums, vec![3, 2, 3, 4, 5]);
+    /// ```
+    pub fn peek_mut(&mut self) -> Option<&mut I::Item> {
+        self.peek_nth_mut(0)
+    }
+
+    /// Returns a mutable reference to the nth(`n`) value without advancing the iterator cursor.
+    ///
+    /// If the value of n is beyond the iterator's remaining length, this returns None.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use multipeek::IteratorExt as _;
+    ///
+    /// let mut iter = (1..5).multipeek();
+    /// *iter.peek_nth_mut(3).unwrap() -= 2;
+    /// *iter.peek_nth_mut(2).unwrap() += 3;
+    /// // The iterator only contains 4 elements, so peek_nth_mut(4) returns None
+    /// assert_eq!(iter.peek_nth_mut(4), None);
+    /// let nums: Vec<_> = iter.collect();
+    /// assert_eq!(nums, vec![1, 2, 6, 2]);
+    /// ```
+    pub fn peek_nth_mut(&mut self, n: usize) -> Option<&mut I::Item> {
+        while n >= self.buf.len() {
+            let item = self.iter.next()?;
+            self.buf.push_back(item);
+        }
+        Some(&mut self.buf[n])
+    }
+
+    /// Consume and return the next value of this iterator if a condition is true.
+    ///
+    /// If `func` returns true for the next value of this iterator, consume and return it.
+    /// Otherwise, return `None`.
+    ///
+    /// # Examples
+    /// Consume a number if it's equal to 0.
+    /// ```rust
+    /// use multipeek::IteratorExt as _;
+    ///
+    /// let mut iter = (0..5).multipeek();
+    /// // The first item of the iterator is 0; consume it.
+    /// assert_eq!(iter.next_if(|&x| x == 0), Some(0));
+    /// // The next item returned is now 1, so `consume` will return `false`.
+    /// assert_eq!(iter.next_if(|&x| x == 0), None);
+    /// // `next_if` saves the value of the next item if it was not equal to `expected`.
+    /// assert_eq!(iter.next(), Some(1));
+    /// ```
+    ///
+    /// Consume any number less than 10.
+    /// ```rust
+    /// use multipeek::IteratorExt as _;
+    ///
+    /// let mut iter = (1..20).multipeek();
+    /// // Consume all numbers less than 10
+    /// while iter.next_if(|&x| x < 10).is_some() {}
+    /// // The next value returned will be 10
+    /// assert_eq!(iter.next(), Some(10));
+    /// ```
+    pub fn next_if(&mut self, func: impl FnOnce(&I::Item) -> bool) -> Option<I::Item> {
+        self.nth_if(0, func)
+    }
+    
+    /// Consume and return the `n`th element of this iterator if a condition is true,
+    /// consuming all of the elements before the `n`th element as well.
+    ///
+    /// If `func` returns true for the nth element of this iterator, consume
+    /// and return it, consuming all previous elements as well.
+    /// Otherwise, return None.
+    ///
+    /// Like `peek_nth`, `nth_if` is zero-indexed, so `peek_nth(0, func)`
+    /// is equivalent to `next_if(func)`.
+    ///
+    /// # Example
+    /// Consume a number if it's even.
+    /// ```rust
+    /// use multipeek::IteratorExt as _;
+    ///
+    /// let mut iter = (0..10).multipeek();
+    /// assert_eq!(iter.nth_if(1, |&n| n % 2 == 0), None);
+    /// // The first element has not been consumed, so it is still 0
+    /// assert_eq!(iter.next(), Some(0));
+    /// // Now, the second next number in the iterator is even
+    /// assert_eq!(iter.nth_if(1, |&n| n % 2 == 0), Some(2));
+    /// // The previous elements have now been consumed
+    /// assert_eq!(iter.next(), Some(3));
+    /// ```
+    pub fn nth_if(&mut self, n: usize, func: impl FnOnce(&I::Item) -> bool) -> Option<I::Item>
+    {
+        if n < self.buf.len() {
+            if func(&self.buf[n]) {
+                return self.buf.drain(0..n + 1).next_back()
+            } else {
+                return None
+            }
+        }
+
+        while n > self.buf.len() {
+            let item = self.iter.next()?;
+            self.buf.push_back(item);
+        }
+
+        match self.iter.next() {
+            Some(matched) if func(&matched) => {
+                self.buf.clear();
+                Some(matched)
+            },
+            Some(other) => {
+                self.buf.push_back(other);
+                None
+            }
+            None => None
+        }
+    }
+
+    /// Consume and return the next item if it is equal to `expected`.
+    ///
+    /// # Example
+    /// Consume a number if it's equal to 0.
+    /// ```rust
+    /// use multipeek::IteratorExt as _;
+    ///
+    /// let mut iter = (0..5).multipeek();
+    /// // The first item of the iterator is 0; consume it.
+    /// assert_eq!(iter.next_if_eq(&0), Some(0));
+    /// // The next item returned is now 1, so `consume` will return `false`.
+    /// assert_eq!(iter.next_if_eq(&0), None);
+    /// // `next_if_eq` saves the value of the next item if it was not equal to `expected`.
+    /// assert_eq!(iter.next(), Some(1));
+    /// ```
+    pub fn next_if_eq<T>(&mut self, expected: &T) -> Option<I::Item>
+    where
+        T: ?Sized,
+        I::Item: PartialEq<T>,
+    {
+        self.next_if(|next| next == expected)
+    }
+
+    /// Consume and return the `n`th element if it is equal to `expected`,
+    /// consuming all the elements before the `n`th element as well.
+    ///
+    /// Like `peek_nth`, `nth_if_eq` is zero-indexed, so `nth_if_eq(0, expected)` is equivalent to `next_if_eq(expected)`.
+    ///
+    /// # Example
+    /// Consume a number if it's equal to 3.
+    /// ```rust
+    /// use multipeek::IteratorExt as _;
+    ///
+    /// let mut iter = (1..5).multipeek();
+    /// // The first and second items of the iterator are 1 and 2, so they will not be returned.
+    /// assert_eq!(iter.nth_if_eq(0, &3), None);
+    /// assert_eq!(iter.nth_if_eq(1, &3), None);
+    /// // The third element of the iterator is 3, so it will be returned
+    /// assert_eq!(iter.nth_if_eq(2, &3), Some(3));
+    /// ```
+    pub fn nth_if_eq<T>(&mut self, n: usize, expected: &T) -> Option<I::Item>
+    where
+        T: ?Sized,
+        I::Item: PartialEq<T>,
+    {
+        self.nth_if(n, |next| next == expected)
+    }
 }
 
 impl<I> Iterator for MultiPeek<I>
